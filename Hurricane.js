@@ -493,6 +493,8 @@ if(!scope.initailized){
     
     scope.mute = true;
 
+    scope.mute = true;
+
     scope.firstCastle = myBuilds["CastleAndFortresses"][0];
 
     //At the beginning, cluster buildings together more.
@@ -1178,10 +1180,10 @@ class Us {
             return;
         }
         let times = {};
-        let start = new Date();
+        let start = scope.getCurrentGameTimeInMilliSec();
         if(idleWorkers.length > 0){
             Us.idleWorkersMine();
-            times["idleWorkersMine"] = new Date();
+            times["idleWorkersMine"] = scope.getCurrentGameTimeInMilliSec();
         }
         
         if(scope.nextTalkTick == time){
@@ -1197,7 +1199,6 @@ class Us {
             }
         }
         scope.myPower = myPower;
-        
         let alliedUnits = scope.getUnits({notOfType: "Worker", team: myTeam});
         let alliedPower = 0;
         for(let i = 0; i < alliedUnits.length; i++){
@@ -1212,7 +1213,7 @@ class Us {
         });
         scope.enPower = enPower;
         scope.maxEnPowerEncountered = Math.max(scope.maxEnPowerEncountered, enPower);
-        times["powerCalc"] = new Date();
+        times["powerCalc"] = scope.getCurrentGameTimeInMilliSec();
 
         if((time % scope.tickrate["BuildCastle"] === 0 || gold > 350)){
             
@@ -1255,19 +1256,19 @@ class Us {
                 scope.doBuildBuildings = false;
             }
 
-            times["buildCastle"] = new Date();
+            times["buildCastle"] = scope.getCurrentGameTimeInMilliSec();
         }//If there are valid gold mines, too many workers, and we are not under 
         //attack, save up and build another castle. Either that, or if we have
         //one castle, only build a house and rush the second castle. 
         
         if(time % scope.tickrate["Repair"] === 0){
             Us.repair();
-            times["repair"] = new Date();
+            times["repair"] = scope.getCurrentGameTimeInMilliSec();
         }
         
         if(time % scope.tickrate["Defend"] === 0){
             Us.defend();
-            times["defend"] = new Date();
+            times["defend"] = scope.getCurrentGameTimeInMilliSec();
         }
 
         if(time % scope.tickrate["ArmyBrain"] === 0){
@@ -1333,8 +1334,7 @@ class Us {
                     }
                 }
             }
-            
-            times["build"] = new Date();
+            times["build"] = scope.getCurrentGameTimeInMilliSec();
         }
         
         if((time % scope.tickrate["Train"] === 0) || scope.usingBuildOrder === true){
@@ -1362,12 +1362,12 @@ class Us {
                     trainUnit(trainThis);
                 }
             }
-            times["train"] = new Date();
+            times["train"] = scope.getCurrentGameTimeInMilliSec();
         }
         
         if(time % 9 === 0){
             Us.reviseUpgradePrio();
-            times["reviseUpgradePrio"] = new Date();
+            times["reviseUpgradePrio"] = scope.getCurrentGameTimeInMilliSec();
         }
         
         if(time % scope.tickrate["Attack"] === 0){
@@ -1378,65 +1378,69 @@ class Us {
                     scope.justAttacked = false;
                 }, scope.tickrate["Attack"] * 1000);
             }
-            times["attack"] = new Date();
+            times["attack"] = scope.getCurrentGameTimeInMilliSec();
         }
         
         if(time % scope.tickrate["Scout"] === 0){
             Us.scout();
-            times["scout"] = new Date();
+            times["scout"] = scope.getCurrentGameTimeInMilliSec();
         }
         
         if(time % 3 === 0){
             Us.assignWorkers();
-            times["assignWorkers"] = new Date();
+            times["assignWorkers"] = scope.getCurrentGameTimeInMilliSec();
         }
         
         if(time % 3 === 0){
             Us.preventCheese();
-            times["preventCheese"] = new Date();
+            times["preventCheese"] = scope.getCurrentGameTimeInMilliSec();
         }
         
         if(time < 5 && scope.buildOrderMisc["workerScout"] === true){
             Us.workerScout();
         }
         
-        if(time % 10 === 0 && DIFFICULTY >= 1){
+        if(time % scope.tickrate["ArmyBrain"] === 0 && DIFFICULTY >= 1){
+            armyBrain();
+            times["armyBrain"] = scope.getCurrentGameTimeInMilliSec();
+        }
+        
+        if(time % 10 === 0){
             Us.brain();
-            times["Us.brain"] = new Date();
+            times["Us.brain"] = scope.getCurrentGameTimeInMilliSec();
         }
 
         if(time % 5 === 0){
             Us.updateSubPrioMisc();
-            times["subPrioMisc"] = new Date();
+            times["subPrioMisc"] = scope.getCurrentGameTimeInMilliSec();
         }
 
         if(time % 2 === 0){
             Us.useAbilites();
-            times["useAbilites"] = new Date();
+            times["useAbilites"] = scope.getCurrentGameTimeInMilliSec();
         }
 
         if((time + 1) % 2 === 0){
             Us.useBirds();
-            times["useBirds"] = new Date();
+            times["useBirds"] = scope.getCurrentGameTimeInMilliSec();
         }
 
         if(time % 9 === 0){
             Us.switchSubMeta();
-            times["subMetaSwitch"] = new Date();
+            times["subMetaSwitch"] = scope.getCurrentGameTimeInMilliSec();
         }
 
-        let end = new Date();
-        let diff = end.getTime() - start.getTime();
+        let end = scope.getCurrentGameTimeInMilliSec();
+        let diff = end - start;
         let last = null;
-        
         let biggest = 0;
         let biggestKey = "Nothing";
         for(let key in times){
-            let newLast = times[key].getTime();
+            let newLast = times[key];
             if(last != null){
-                times[key] = Math.round(times[key].getTime() - last);
+                times[key] = Math.round(times[key] - last);
             }else{
-                times[key] = Math.round(times[key].getTime() - start.getTime());
+                times[key] = Math.round(times[key] - start);
             }
             
             if(times[key] > biggest){
@@ -2058,7 +2062,7 @@ class Us {
             scope.underAttack = true;
             
             if(attackingFightingUnits == undefined){
-                scope.chatMsg("attackingFightingUnits is undefined!");
+                console.log("attackingFightingUnits is undefined!");
             }else{
                 let selUnit = attackingFightingUnits[Randomizer.nextInt(0, attackingFightingUnits.length - 1)];
                 let center;
@@ -5121,22 +5125,6 @@ function kite(units, delay = 1000){
 }
 
 /**
- * Unlike kiting, this won't send the units back to the base. Instead, it will cause the units to randomly
- * move.
- * 
- * @param {array} units - an array of units.
- * @param {number} delay - the delay before the units return.
- */
-function stutterStep(units, delay){
-    let moveX = Randomizer.nextInt(-5, 5);
-    let moveY = Randomizer.nextInt(-5, 5);
-    units.forEach(function(unit){
-        scope.order("Move", [unit], {x: unit.getX() + moveX, y: unit.getY() + moveY});
-    });
-    scope.setTimeout(attackWith, delay, units);
-}
-
-/**
  * A special function for special attacks, such as worker rushes, that don't
  * use the normal fighting units. Overrides other orders. Will throw an error
  *  if not passed an array.
@@ -5187,6 +5175,11 @@ function getMyColor(){
 	return color;
 }
 
+
+/**
+ * Makes the bot say random things. Will also call beginBotChat,
+ * meaning calling this directly is not advised.
+ */
 function doBotChat(){
     if(scope.player.isAlive == false){
         return;
@@ -5466,7 +5459,7 @@ function getRandomEnemyNr(){
     while(rand == me || scope.getTeamNumber(rand) == myTeam){
         SENTINEL++;
         if(SENTINEL > 20){
-            scope.chatMsg("getRandomEnemyNr: SENTINEL has been triggered.");
+            console.log("getRandomEnemyNr: SENTINEL has been triggered.");
             break;
         }
         rand = players[Randomizer.nextInt(0, players.length - 1)];
